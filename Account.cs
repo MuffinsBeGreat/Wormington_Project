@@ -6,103 +6,147 @@
 * Class Account - represents a financial account with properties such as account number, account holder, and balance.
 */
 
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+
 public class Account
 {
+    public int ID { get; set; }
     public string OwnerName { get; set; }
-    public string AccountNumber { get; set; }
-    public decimal Balance { get; private set; }
-    public List<IRecord> Records { get; private set; } = new List<IRecord>();
-    public List<BudgetCategory> BudgetCategories { get; private set; } = new List<BudgetCategory>();
+    public decimal MonthlyIncome { get; set; }
+    public decimal MonthlyExpenses { get; set; }
+    public decimal Balance { get; set; }
+    public List<IRecord> Records { get; private set; }
 
-    public Account(string ownerName, string accountNumber, decimal initialBalance)
+    public List<BudgetCategory> Categories { get; private set; }
+
+    // Constructor for creating new accounts (not loaded from DB)
+    public Account(string ownerName, decimal monthlyIncome, decimal monthlyExpenses, decimal balance)
     {
         OwnerName = ownerName;
-        AccountNumber = accountNumber;
-        Balance = initialBalance;
+        MonthlyIncome = monthlyIncome;
+        MonthlyExpenses = monthlyExpenses;
+        Balance = balance;
+        Records = new List<IRecord>();
+        Categories = new List<BudgetCategory>();
     }
 
-    public decimal GetMonthlyCategoryExpenses(string categoryName, int month, int year)
+    // Constructor for loading accounts from the database
+    public Account(int id, string ownerName, decimal monthlyIncome,
+                   decimal monthlyExpenses, decimal balance, List<IRecord> records)
     {
-        return Records.OfType<Expense>()
-                      .Where(r => r.GetCategory() == categoryName && r.GetDate().Month == month && r.GetDate().Year == year)
-                      .Sum(r => r.GetAmount());
-    }
-
-    public BudgetCategory? GetBudgetCategory(string categoryName)
-    {
-        return BudgetCategories.FirstOrDefault(c => c.Name == categoryName);
+        ID = id;
+        OwnerName = ownerName;
+        MonthlyIncome = monthlyIncome;
+        MonthlyExpenses = monthlyExpenses;
+        Balance = balance;
+        Records = records ?? new List<IRecord>();
+        Categories = new List<BudgetCategory>();
     }
 
     public void AddCategory(BudgetCategory category)
     {
-        if (category == null) return;
-
-        if (!BudgetCategories.Any(c => c.Name == category.Name))
-            BudgetCategories.Add(category);
+        if (category != null)
+            Categories.Add(category);
+    }
+    public BudgetCategory? GetCategoryByName(string name)
+    {
+        return Categories.Find(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
-    public void AddRecord(IRecord record)
+    public decimal GetMonthlyCategoryExpenses(string categoryName, int month, int year)
     {
-        if (record == null) return;
-
-        Records.Add(record);
-        Balance += record.GetSignedAmount();
-
-        if (record is Expense expense)
+        decimal total = 0;
+        foreach (var record in Records)
         {
-            var category = BudgetCategories.FirstOrDefault(c => c.Name == expense.GetCategory());
-            if (category != null)
+            if (record is Expense expense &&
+                expense.Category.Equals(categoryName, StringComparison.OrdinalIgnoreCase) &&
+                expense.Date.Month == month &&
+                expense.Date.Year == year)
             {
-                category.Records.Add(expense);
+                total += expense.Amount;
             }
         }
-    }
-
-    public decimal GetCurrentBalance()
-    {
-        return Balance;
-    }
-
-    public decimal GetMonthlyIncome(int month, int year)
-    {
-        return Records.OfType<Income>()
-                      .Where(r => r.GetDate().Month == month && r.GetDate().Year == year)
-                      .Sum(r => r.GetAmount());
+        return total;
     }
 
     public decimal GetMonthlyExpenses(int month, int year)
     {
-        return Records.OfType<Expense>()
-                      .Where(r => r.GetDate().Month == month && r.GetDate().Year == year)
-                      .Sum(r => r.GetAmount());
+        decimal total = 0;
+        foreach (var record in Records)
+        {
+            if (record is Expense expense &&
+                expense.Date.Month == month &&
+                expense.Date.Year == year)
+            {
+                total += expense.Amount;
+            }
+        }
+        return total;
     }
 
-    public List<IRecord> GetRecordsByMonth(int month, int year)
+    public decimal GetCurrentBalance()
     {
-        return Records.Where(r => r.GetDate().Month == month && r.GetDate().Year == year).ToList();
+        decimal balance = 0;
+        foreach (var record in Records)
+        {
+            balance += record.GetSignedAmount();
+        }
+        return balance;
+    }
+    public void AddRecord(IRecord record)
+    {
+        if (record != null)
+            Records.Add(record);
     }
 
-    public string GenerateSummaryReport(int? month = null, int? year = null)
+    public void RemoveRecord(IRecord record)
     {
-        var report = $"Account Summary for {OwnerName} (Account Number: {AccountNumber})\n";
-        report += $"Current Balance: {Balance:C}\n";
+        if (record != null)
+            Records.Remove(record);
+    }
 
-        var filteredRecords = Records.AsEnumerable();
-        if (month.HasValue && year.HasValue)
+    public void UpdateBalance()
+    {
+        decimal total = 0;
+        foreach (var record in Records)
         {
-            filteredRecords = filteredRecords.Where(r => r.GetDate().Month == month.Value && r.GetDate().Year == year.Value);
-            report += $"Records for {month}/{year}:\n";
+            total += record.GetSignedAmount();
         }
-        else
+        Balance = total;
+    }
+
+    public override string ToString()
+    {
+        return $"Account: {OwnerName}\n" +
+               $"Monthly Income: {MonthlyIncome:C}\n" +
+               $"Monthly Expense Limit: {MonthlyExpenses:C}\n" +
+               $"Record Count: {Records.Count}";
+    }
+
+    public string GenerateSummaryReport(NumberFormatInfo nfi)
+    {
+        decimal totalIncome = 0;
+        decimal totalExpenses = 0;
+
+        foreach (var record in Records)
         {
-            report += "\nAll Records:\n\n";
+            if (record is Income income)
+            {
+                totalIncome += income.Amount;
+            }
+            else if (record is Expense expense)
+            {
+                totalExpenses += expense.Amount;
+            }
         }
 
-        foreach (var record in filteredRecords)
-        {
-            report += record.ToString() + "\n\n";
-        }
+        decimal netBalance = totalIncome - totalExpenses;
 
-        return report;
+        return $"Account Summary for {OwnerName}:\n" +
+               $"Total Income: {totalIncome.ToString("C", nfi)}\n" +
+               $"Total Expenses: {totalExpenses.ToString("C", nfi)}\n" +
+               $"Net Balance: {netBalance.ToString("C", nfi)}\n";
     }
 }

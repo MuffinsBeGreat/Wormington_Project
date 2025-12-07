@@ -18,6 +18,9 @@ public class Expense : Transaction
     {
         return -GetAmount();
     }
+
+    public override string RecordType => "Expense";
+
     public override string ToString()
     {
         return "[Expense Record]:\n" + base.ToString();

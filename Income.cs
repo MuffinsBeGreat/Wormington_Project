@@ -18,6 +18,9 @@ public class Income : Transaction
     {
         return GetAmount();
     }
+
+    public override string RecordType => "Income";
+
     public override string ToString()
     {
         return "[Income Record]:\n" + base.ToString();

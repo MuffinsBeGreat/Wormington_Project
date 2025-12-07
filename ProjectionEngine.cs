@@ -6,6 +6,7 @@
 * Class ProjectionEngine - provides methods to project future income
 * and expenses based on historical data.
 */
+using System.Globalization;
 
 public class ProjectionEngine
 {
@@ -60,13 +61,13 @@ public class ProjectionEngine
         return adjustedExpense;
     }
 
-    public string GenerateProjectionReport(int monthsAhead, decimal annualInflationRate, int yearsAhead, decimal currentExpense)
+    public string GenerateProjectionReport(int monthsAhead, decimal annualInflationRate, int yearsAhead, decimal currentExpense, NumberFormatInfo nfi)
     {
         decimal futureBalance = PredictFutureBalance(monthsAhead);
         decimal inflationAdjustedExpense = ProjectInflationAdjustedExpense(currentExpense, annualInflationRate, yearsAhead);
 
         return $"Projection Report:\n" +
-               $"- Projected Balance in {monthsAhead} months: {futureBalance:C}\n" +
-               $"- Inflation-Adjusted Expense in {yearsAhead} years: {inflationAdjustedExpense:C}";
+               $"- Projected Balance in {monthsAhead} months: {futureBalance.ToString("C", nfi)}\n" +
+               $"- Inflation-Adjusted Expense in {yearsAhead} years: {inflationAdjustedExpense.ToString("C", nfi)}";
     }
 }

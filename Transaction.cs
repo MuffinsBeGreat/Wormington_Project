@@ -14,6 +14,8 @@ public abstract class Transaction : IRecord
     private string category;
     private string description;
 
+    public abstract string RecordType { get; }
+
     protected Transaction(decimal amount, DateTime date, string category, string description)
     {
         this.amount = amount;
@@ -21,6 +23,11 @@ public abstract class Transaction : IRecord
         this.category = category;
         this.description = description;
     }
+
+    public decimal Amount => amount;
+    public DateTime Date => date;
+    public string Category => category;
+    public string Description => description;
 
     public decimal GetAmount()
     {

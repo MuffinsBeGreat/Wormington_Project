@@ -5,45 +5,115 @@
 *
 * Main application class.
 */
-
+using System.Globalization;
 public class Program
 {
     public static void Main(string[] args)
     {
         Console.WriteLine("\nCasey Wormington Financial Records Application\n");
-
+        Account myAccount = null!;
         // Ask the user to create an account
-        string ownerName = ReadRequiredString("Enter account owner name: ");
-
-        string accountNumber = ReadRequiredString("Enter account number: ");
-
-        Console.Write("Enter initial balance: ");
-        decimal initialBalance;
-        while (!decimal.TryParse(Console.ReadLine(), out initialBalance))
+        bool nullAccount = true;
+        while (nullAccount)
         {
-            Console.Write("Invalid input. Please enter a valid decimal number for initial balance: ");
+            Console.WriteLine("Account Menu:");
+            Console.WriteLine("1. Create new Account");
+            Console.WriteLine("2. Load Account from Database");
+            Console.WriteLine("3. Exit");
+
+            string choice = ReadRequiredString("Select an option (1-3): ");
+            switch (choice)
+            {
+                case "1":
+                    string ownerName = ReadRequiredString("Enter account owner name: ");
+
+                    string balance = ReadRequiredString("Enter initial balance: ");
+                    decimal balanceDecimal;
+                    while (!decimal.TryParse(balance, out balanceDecimal))
+                    {
+                        Console.Write("Invalid input. Please enter a valid decimal number for initial balance: ");
+                        balance = Console.ReadLine()!;
+                    }
+
+                    string monthlyIncome = ReadRequiredString("Enter monthly income: ");
+                    decimal monthlyIncomeDecimal;
+                    while (!decimal.TryParse(monthlyIncome, out monthlyIncomeDecimal))
+                    {
+                        Console.Write("Invalid input. Please enter a valid decimal number for monthly income: ");
+                        monthlyIncome = Console.ReadLine()!;
+                    }
+
+                    string monthlyExpenses = ReadRequiredString("Enter monthly expenses: ");
+                    decimal monthlyExpensesDecimal;
+                    while (!decimal.TryParse(monthlyExpenses, out monthlyExpensesDecimal))
+                    {
+                        Console.Write("Invalid input. Please enter a valid decimal number for monthly expenses: ");
+                        monthlyExpenses = Console.ReadLine()!;
+                    }
+
+                    myAccount = new Account(ownerName, monthlyIncomeDecimal, monthlyExpensesDecimal, balanceDecimal);
+
+                    // Create budget categories
+                    myAccount.AddCategory(new BudgetCategory("Groceries", 500.00m));
+                    myAccount.AddCategory(new BudgetCategory("Utilities", 300.00m));
+                    myAccount.AddCategory(new BudgetCategory("Entertainment", 200.00m));
+                    myAccount.AddCategory(new BudgetCategory("Rent", 1500.00m));
+                    myAccount.AddCategory(new BudgetCategory("Income", 0.00m));
+                    Console.WriteLine();
+                    nullAccount = false;
+                    break;
+
+                case "2":
+                    bool connected = false;
+                    while (!connected)
+                    {
+                        Console.Write("Enter Account ID to Load: ");
+                        int loadID;
+                        while (!int.TryParse(Console.ReadLine(), out loadID))
+                        {
+                            Console.Write("Invalid input. Please enter a valid integer for Account ID: ");
+                            loadID = int.Parse(Console.ReadLine()!);
+                        }
+                        Console.WriteLine();
+
+                        using (var conn = SQLiteDatabase.Connect("WormingtonProject.db"))
+                        {
+                            var loaded = AccountDetailsDb.GetAccount(conn, loadID);
+
+                            if (loaded != null)
+                            {
+                                myAccount = loaded;
+                                Console.WriteLine("Account loaded successfully.\n");
+                                Console.WriteLine(myAccount.GenerateSummaryReport());
+                                connected = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("Account with the specified ID not found.");
+                            }
+                        }
+                    }
+                    nullAccount = false;
+                    break;
+
+                case "3":
+                    return;
+            }
         }
-
-        Account myAccount = new Account(ownerName, accountNumber, initialBalance);
-
-        // Create budget categories
-        myAccount.AddCategory(new BudgetCategory("Groceries", 500.00m));
-        myAccount.AddCategory(new BudgetCategory("Utilities", 300.00m));
-        myAccount.AddCategory(new BudgetCategory("Entertainment", 200.00m));
-        myAccount.AddCategory(new BudgetCategory("Rent", 1500.00m));
-        myAccount.AddCategory(new BudgetCategory("Income", 0.00m));
 
         // Main menu loop
         bool running = true;
         while (running)
         {
             Console.WriteLine("\nMain Menu:");
+
             Console.WriteLine("1. Add Income Record");
             Console.WriteLine("2. Add Expense Record");
             Console.WriteLine("3. View Account Summary");
             Console.WriteLine("4. Run Projection");
-            Console.WriteLine("5. Exit");
-            string choice = ReadRequiredString("Select an option (1-5): ");
+            Console.WriteLine("5. Save account to Database");
+            Console.WriteLine("6. Exit");
+            string choice = ReadRequiredString("Select an option (1-6): ");
             switch (choice)
             {
                 case "1":
@@ -53,12 +123,33 @@ public class Program
                     AddExpense(myAccount);
                     break;
                 case "3":
-                    Console.WriteLine(myAccount.GenerateSummaryReport());
+                    Console.WriteLine("\n" + myAccount.GenerateSummaryReport());
+                    System.Threading.Thread.Sleep(2000);
                     break;
                 case "4":
                     RunProjection(myAccount);
                     break;
                 case "5":
+                    using (var conn = SQLiteDatabase.Connect("WormingtonProject.db"))
+                    {
+                        if (conn != null)
+                        {
+                            AccountDetailsDb.CreateTable(conn);
+
+                            if (myAccount.ID == 0)
+                            {
+                                myAccount.ID = AccountDetailsDb.AddAccount(conn, myAccount);
+                                Console.WriteLine($"Account created and saved with ID: {myAccount.ID}");
+                            }
+                            else
+                            {
+                                AccountDetailsDb.UpdateAccount(conn, myAccount);
+                                Console.WriteLine("Account updated successfully.");
+                            }
+                        }
+                    }
+                    break;
+                case "6":
                     running = false;
                     break;
                 default:
@@ -118,7 +209,7 @@ public class Program
         Console.WriteLine("Expense record added successfully.");
 
         // Check if the expense exceeds the budget
-        BudgetCategory? budgetCategory = account.GetBudgetCategory(category);
+        BudgetCategory? budgetCategory = account.GetCategoryByName(category);
         if (budgetCategory != null)
         {
             decimal monthlyExpenses = account.GetMonthlyCategoryExpenses(category, date.Month, date.Year);
@@ -154,7 +245,8 @@ public class Program
         decimal currentMonthlyExpense = account.GetMonthlyExpenses(DateTime.Now.Month, DateTime.Now.Year);
 
         ProjectionEngine engine = new ProjectionEngine(account);
-        Console.WriteLine("\n" + engine.GenerateProjectionReport(months, inflationRate, yearsAhead, currentMonthlyExpense));
+        var nfi = GetCustomCurrencyFormat();
+        Console.WriteLine("\n" + engine.GenerateProjectionReport(months, inflationRate, yearsAhead, currentMonthlyExpense, nfi));
     }
 
     // Helper Methods
@@ -168,5 +260,12 @@ public class Program
             input = Console.ReadLine();
         }
         return input;
+    }
+
+    public static NumberFormatInfo GetCustomCurrencyFormat()
+    {
+        var nfi = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
+        nfi.CurrencyNegativePattern = 1; // e.g., -$1,234
+        return nfi;
     }
 }
