@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Wormington_Project")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e7b8a0a09651963849b6feef8946de17fe53a1f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d0b7c811d635a39cebdf4fb6c66894c5e8f9f370")]
 [assembly: System.Reflection.AssemblyProductAttribute("Wormington_Project")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Wormington_Project")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

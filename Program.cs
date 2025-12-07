@@ -84,7 +84,8 @@ public class Program
                             {
                                 myAccount = loaded;
                                 Console.WriteLine("Account loaded successfully.\n");
-                                Console.WriteLine(myAccount.GenerateSummaryReport());
+                                var nfi = GetCustomCurrencyFormat();
+                                Console.WriteLine(myAccount.GenerateSummaryReport(nfi));
                                 connected = true;
                             }
                             else
@@ -123,7 +124,8 @@ public class Program
                     AddExpense(myAccount);
                     break;
                 case "3":
-                    Console.WriteLine("\n" + myAccount.GenerateSummaryReport());
+                    var nfi = GetCustomCurrencyFormat();
+                    Console.WriteLine("\n" + myAccount.GenerateSummaryReport(nfi));
                     System.Threading.Thread.Sleep(2000);
                     break;
                 case "4":
@@ -175,7 +177,7 @@ public class Program
             Console.Write("Invalid input. Please enter a valid date (yyyy-mm-dd): ");
         }
 
-        string category = ReadRequiredString("Enter income category: (Groceries, Utilities, Entertainment, Rent): ");
+        string category = ReadRequiredString("Enter income category: (Groceries, Utilities, Entertainment, Rent, Income): ");
 
         string description = ReadRequiredString("Enter income description: ");
 
